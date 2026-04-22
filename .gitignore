@@ -1,0 +1,6 @@
+.venv
+.env
+prompt.txt
+testing_agent.py
+.vscode
+__pycache__
