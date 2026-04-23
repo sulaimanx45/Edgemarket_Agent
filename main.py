@@ -1,11 +1,20 @@
 from fastapi import FastAPI,HTTPException
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from agent import agent
 from pydantic import BaseModel
 from typing import Optional
 import uuid
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class ChatRequest(BaseModel):
     user_id: Optional[str]=None
@@ -21,10 +30,12 @@ async def chat(request: ChatRequest):
     session_id = request.session_id or str(uuid.uuid4())
 
     async def generate():
-        async for chunk in agent.arun(request.query, session_id=session_id, user_id=request.user_id, stream=True):
-            if chunk.content:
-                yield chunk.content
-
+        try:
+            async for chunk in agent.arun(request.query, session_id=session_id, user_id=request.user_id, stream=True):
+                if chunk.content:
+                    yield chunk.content
+        except Exception as e:
+            yield f"\n[Error]: {str(e)}"
     try:
         return StreamingResponse(generate(), media_type="text/plain", headers={"X-Session-ID": session_id})
     except Exception as e:
